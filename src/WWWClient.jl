@@ -134,8 +134,8 @@ module WWWClient
         r = p.current_response
         close(p.sock)
 
-        # delete the temporary header key
-        delete!(r.headers, "current_header", nothing)
+        # pop the temporary header key
+        pop!(r.headers, "current_header", nothing)
         return 0
     end
 
