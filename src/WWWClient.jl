@@ -46,7 +46,7 @@ module WWWClient
     end
 
     immutable ResponseParser
-        parser::Parser 
+        parser::Parser
         settings::ParserSettings
 
         function ResponseParser(r,sock)
@@ -91,7 +91,7 @@ module WWWClient
 
     # Gather the header_field, set the field
     # on header value, set the value for the current field
-    # there might be a better way to do 
+    # there might be a better way to do
     # this: https://github.com/joyent/node/blob/master/src/node_http_parser.cc#L207
 
     function on_header_field(parser, at, len)
@@ -224,16 +224,27 @@ module WWWClient
         r
     end
 
-    # 
+    # GET
     get(uri::URI; headers = Dict{String,String}()) = process_response(open_stream(uri,headers,"","GET"))
-    delete(uri::URI; headers = Dict{String,String}()) = process_response(open_stream(uri,headers,"","DELETE"))
+
+    get(string::ASCIIString) = get(URI(string))
+
+    # POST
     function post(uri::URI, data::String; headers = Dict{String,String}())
         process_response(open_stream(uri,headers,data,"POST"))
     end
+
+    post(uri::String, data::String; args...) = post(URI(uri), data; args...)
+
+    # PUT
     function put(uri::URI, data::String; headers = Dict{String,String}())
         process_response(open_stream(uri,headers,data,"PUT"))
     end
 
-    get(string::ASCIIString) = get(URI(string))
+    put(uri::String, data::String; args...) = put(URI(uri), data; args...)
+
+    # DELETE
+    delete(uri::URI; headers = Dict{String,String}()) = process_response(open_stream(uri,headers,"","DELETE"))
+
     delete(string::ASCIIString) = delete(URI(string))
 end
