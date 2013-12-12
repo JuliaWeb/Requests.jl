@@ -244,7 +244,10 @@ module WWWClient
     put(uri::String, data::String; args...) = put(URI(uri), data; args...)
 
     # DELETE
+    function delete(uri::URI, data::String; headers = Dict{String,String}())
+        process_response(open_stream(uri,headers,data,"DELETE"))
+    end
     delete(uri::URI; headers = Dict{String,String}()) = process_response(open_stream(uri,headers,"","DELETE"))
-
     delete(string::ASCIIString) = delete(URI(string))
+
 end
