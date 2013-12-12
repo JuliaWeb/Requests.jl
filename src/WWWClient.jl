@@ -1,6 +1,6 @@
 module WWWClient
 
-    import Base.get, Base.put
+    import Base.get, Base.put, Base.connect
 
     using HttpParser
     using HttpCommon
@@ -224,30 +224,22 @@ module WWWClient
         r
     end
 
-    # GET
-    get(uri::URI; headers = Dict{String,String}()) = process_response(open_stream(uri,headers,"","GET"))
+    # Http Methods
+    for f in [:post, :put, :delete, :head, :trace, :connect, :options]
+        @eval begin
+            function ($f)(uri::URI,data::String;headers = Dict{String,String}())
+                process_response(open_stream(uri,headers,data,
+                                             string($f)|>uppercase))
+            end
+        end
 
-    get(string::ASCIIString) = get(URI(string))
+        @eval ($f)(uri::String,data::String;args...) =
+            ($f)(URI(uri),data;args...)
 
-    # POST
-    function post(uri::URI, data::String; headers = Dict{String,String}())
-        process_response(open_stream(uri,headers,data,"POST"))
+        @eval ($f)(uri::URI;headers = Dict{String,String}) =
+            process_response(open_stream(uri,headers,"",string($f)|>uppercase))
+
+        @eval ($f)(string::ASCIIString) = ($f)(URI(string))
     end
-
-    post(uri::String, data::String; args...) = post(URI(uri), data; args...)
-
-    # PUT
-    function put(uri::URI, data::String; headers = Dict{String,String}())
-        process_response(open_stream(uri,headers,data,"PUT"))
-    end
-
-    put(uri::String, data::String; args...) = put(URI(uri), data; args...)
-
-    # DELETE
-    function delete(uri::URI, data::String; headers = Dict{String,String}())
-        process_response(open_stream(uri,headers,data,"DELETE"))
-    end
-    delete(uri::URI; headers = Dict{String,String}()) = process_response(open_stream(uri,headers,"","DELETE"))
-    delete(string::ASCIIString) = delete(URI(string))
 
 end
