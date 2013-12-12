@@ -225,7 +225,8 @@ module WWWClient
     end
 
     # Http Methods
-    for f in [:post, :put, :delete, :head, :trace, :connect, :options]
+    for f in [:get, :post, :put, :delete, :head,
+              :trace, :connect, :options, :patch]
         @eval begin
             function ($f)(uri::URI,data::String;headers = Dict{String,String}())
                 process_response(open_stream(uri,headers,data,
