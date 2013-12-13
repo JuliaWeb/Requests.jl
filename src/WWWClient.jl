@@ -237,7 +237,7 @@ module WWWClient
         @eval ($f)(uri::String,data::String;args...) =
             ($f)(URI(uri),data;args...)
 
-        @eval ($f)(uri::URI;headers = Dict{String,String}) =
+        @eval ($f)(uri::URI;headers = Dict{String,String}()) =
             process_response(open_stream(uri,headers,"",string($f)|>uppercase))
 
         @eval ($f)(string::ASCIIString) = ($f)(URI(string))
