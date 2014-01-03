@@ -1,12 +1,12 @@
 module WWWClient
 
-    import Base.get, Base.put, Base.connect
-
+    import Base.get, Base.put
     using HttpParser
     using HttpCommon
     using URIParser
     using GnuTLS
     using Codecs
+    using JSON
 
     export URI, get, post, put, delete
 
@@ -226,21 +226,36 @@ module WWWClient
 
     # Http Methods
     for f in [:get, :post, :put, :delete, :head,
-              :trace, :connect, :options, :patch]
+              :trace, :options, :patch]
+
         @eval begin
-            function ($f)(uri::URI,data::String;headers = Dict{String,String}())
-                process_response(open_stream(uri,headers,data,
-                                             string($f)|>uppercase))
+            function ($f)(uri::URI, data::String; headers = Dict{String, String}())
+                process_response(open_stream(uri, headers, data,
+                                             string($f) |> uppercase))
             end
         end
 
-        @eval ($f)(uri::String,data::String;args...) =
-            ($f)(URI(uri),data;args...)
+        @eval ($f)(uri::URI; args...) = ($f)(uri, ""; args...)
 
-        @eval ($f)(uri::URI;headers = Dict{String,String}()) =
-            process_response(open_stream(uri,headers,"",string($f)|>uppercase))
+        @eval ($f)(uri::String, data; args...) = ($f)(URI(uri), data; args...)
 
-        @eval ($f)(string::ASCIIString) = ($f)(URI(string))
+        @eval ($f)(uri::String; args...) = ($f)(URI(uri), ""; args...)
+    end
+
+    function post(uri::URI, data::Dict; headers = Dict{String, String}(), args...)
+        headers["Content-Type"] = "application/json"
+        post(uri, json(data); headers = headers, args...)
+    end
+
+    function get(uri::URI, qparams::Dict; args...)
+        query_str = string(uri.query, "&")
+
+        for (k, v) in qparams
+            query_str *= "$k=$v&"
+        end
+        query_str = chop(query_str) # remove the trailing &
+
+        get(URI(uri; query = query_str); args...)
     end
 
 end
