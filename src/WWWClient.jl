@@ -8,7 +8,7 @@ module WWWClient
     using Codecs
     using JSON
 
-    export URI, get, post, put, delete
+    export URI, get, post, put, delete, patch
 
     ## URI Parsing
 
@@ -192,10 +192,10 @@ module WWWClient
         end
         ip = Base.getaddrinfo(uri.host)
         if uri.schema == "http"
-            stream = connect(ip, uri.port == 0 ? 80 : uri.port)
+            stream = Base.connect(ip, uri.port == 0 ? 80 : uri.port)
         else
             # Initialize HTTPS
-            sock = connect(ip, uri.port == 0 ? 443 : uri.port)
+            sock = Base.connect(ip, uri.port == 0 ? 443 : uri.port)
             stream = GnuTLS.Session()
             set_priority_string!(stream)
             set_credentials!(stream,GnuTLS.CertificateStore())
@@ -226,7 +226,7 @@ module WWWClient
 
     # Http Methods
     for f in [:get, :post, :put, :delete, :head,
-              :trace, :options, :patch]
+              :trace, :options, :patch, :connect]
 
         @eval begin
             function ($f)(uri::URI, data::String; headers = Dict{String, String}())
@@ -242,20 +242,28 @@ module WWWClient
         @eval ($f)(uri::String; args...) = ($f)(URI(uri), ""; args...)
     end
 
-    function post(uri::URI, data::Dict; headers = Dict{String, String}(), args...)
-        headers["Content-Type"] = "application/json"
-        post(uri, json(data); headers = headers, args...)
+    for f in [:post, :put, :patch]
+        @eval begin
+            function ($f)(uri::URI, data::Dict; headers = Dict{String, String}(), args...)
+                headers["Content-Type"] = "application/json"
+                ($f)(uri, json(data); headers = headers, args...)
+            end
+        end
     end
 
-    function get(uri::URI, qparams::Dict; args...)
-        query_str = string(uri.query, "&")
+    for f in [:get, :delete]
+        @eval begin
+            function ($f)(uri::URI, qparams::Dict; args...)
+                query_str = string(uri.query, "&")
 
-        for (k, v) in qparams
-            query_str *= "$k=$v&"
+                for (k, v) in qparams
+                    query_str *= "$k=$v&"
+                end
+                query_str = chop(query_str) # remove the trailing &
+
+                ($f)(URI(uri; query = query_str); args...)
+            end
         end
-        query_str = chop(query_str) # remove the trailing &
-
-        get(URI(uri; query = query_str); args...)
     end
 
 end
