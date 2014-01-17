@@ -224,44 +224,50 @@ module WWWClient
         r
     end
 
+    function format_query_str(queryparams; uri = URI(""))
+        query_str = string(uri.query, "&")
+
+        for (k, v) in queryparams
+            query_str *= "$k=$v&"
+        end
+
+        chop(query_str) # remove the trailing &
+    end
+
     # Http Methods
     for f in [:get, :post, :put, :delete, :head,
               :trace, :options, :patch, :connect]
 
         @eval begin
-            function ($f)(uri::URI, data::String; headers = Dict{String, String}())
+            function ($f)(uri::URI, data::String, headers::Dict{String, String})
                 process_response(open_stream(uri, headers, data,
                                              string($f) |> uppercase))
             end
         end
 
-        @eval ($f)(uri::URI; args...) = ($f)(uri, ""; args...)
-
-        @eval ($f)(uri::String, data; args...) = ($f)(URI(uri), data; args...)
-
-        @eval ($f)(uri::String; args...) = ($f)(URI(uri), ""; args...)
+        @eval ($f)(uri::String; args...) = ($f)(URI(uri); args...)
     end
 
-    for f in [:post, :put, :patch]
+    for f in [:get, :delete, :head, :options, :connect]
         @eval begin
-            function ($f)(uri::URI, data::Dict; headers = Dict{String, String}(), args...)
-                headers["Content-Type"] = "application/json"
-                ($f)(uri, json(data); headers = headers, args...)
+            function ($f)(uri::URI; query::Dict = Dict(),
+                                    headers::Dict{String, String} = Dict{String, String}())
+
+                query_str = format_query_str(query; uri = uri)
+                ($f)(URI(uri; query = query_str), "", headers)
             end
         end
     end
 
-    for f in [:get, :delete]
+    for f in [:post, :put, :patch, :trace]
         @eval begin
-            function ($f)(uri::URI, qparams::Dict; args...)
-                query_str = string(uri.query, "&")
+            function ($f)(uri::URI; headers = Dict{String, String}(),
+                                    data = Dict(),
+                                    query::Dict = Dict())
 
-                for (k, v) in qparams
-                    query_str *= "$k=$v&"
-                end
-                query_str = chop(query_str) # remove the trailing &
-
-                ($f)(URI(uri; query = query_str); args...)
+                headers["Content-Type"] = "application/json"
+                query_str = format_query_str(query; uri = uri)
+                ($f)(URI(uri; query = query_str), json(data), headers)
             end
         end
     end
