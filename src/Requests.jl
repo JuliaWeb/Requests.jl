@@ -1,14 +1,14 @@
-module WWWClient
+module Requests
 
     import Base.get, Base.put
-
     using HttpParser
     using HttpCommon
     using URIParser
     using GnuTLS
     using Codecs
+    using JSON
 
-    export URI, get, post, put, delete
+    export URI, get, post, put, delete, head, options, patch
 
     ## URI Parsing
 
@@ -26,7 +26,7 @@ module WWWClient
 
     function default_request(method,resource,host,data,user_headers=Dict{None,None}())
         headers = (String => String)[
-            "User-Agent" => "WWWClient.jl/0.0.0",
+            "User-Agent" => "Requests.jl/0.0.0",
             "Host" => host,
             "Accept" => "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
             ]
@@ -46,7 +46,7 @@ module WWWClient
     end
 
     immutable ResponseParser
-        parser::Parser 
+        parser::Parser
         settings::ParserSettings
 
         function ResponseParser(r,sock)
@@ -91,7 +91,7 @@ module WWWClient
 
     # Gather the header_field, set the field
     # on header value, set the value for the current field
-    # there might be a better way to do 
+    # there might be a better way to do
     # this: https://github.com/joyent/node/blob/master/src/node_http_parser.cc#L207
 
     function on_header_field(parser, at, len)
@@ -192,10 +192,10 @@ module WWWClient
         end
         ip = Base.getaddrinfo(uri.host)
         if uri.schema == "http"
-            stream = connect(ip, uri.port == 0 ? 80 : uri.port)
+            stream = Base.connect(ip, uri.port == 0 ? 80 : uri.port)
         else
             # Initialize HTTPS
-            sock = connect(ip, uri.port == 0 ? 443 : uri.port)
+            sock = Base.connect(ip, uri.port == 0 ? 443 : uri.port)
             stream = GnuTLS.Session()
             set_priority_string!(stream)
             set_credentials!(stream,GnuTLS.CertificateStore())
@@ -224,16 +224,52 @@ module WWWClient
         r
     end
 
-    # 
-    get(uri::URI; headers = Dict{String,String}()) = process_response(open_stream(uri,headers,"","GET"))
-    delete(uri::URI; headers = Dict{String,String}()) = process_response(open_stream(uri,headers,"","DELETE"))
-    function post(uri::URI, data::String; headers = Dict{String,String}())
-        process_response(open_stream(uri,headers,data,"POST"))
-    end
-    function put(uri::URI, data::String; headers = Dict{String,String}())
-        process_response(open_stream(uri,headers,data,"PUT"))
+    function format_query_str(queryparams; uri = URI(""))
+        query_str = string(uri.query, "&")
+
+        for (k, v) in queryparams
+            query_str *= "$k=$v&"
+        end
+
+        chop(query_str) # remove the trailing &
     end
 
-    get(string::ASCIIString) = get(URI(string))
-    delete(string::ASCIIString) = delete(URI(string))
+    # Http Methods
+    for f in [:get, :post, :put, :delete, :head,
+              :trace, :options, :patch, :connect]
+
+        @eval begin
+            function ($f)(uri::URI, data::String, headers::Dict{String, String})
+                process_response(open_stream(uri, headers, data,
+                                             $(uppercase(string(f)))))
+            end
+        end
+
+        @eval ($f)(uri::String; args...) = ($f)(URI(uri); args...)
+    end
+
+    for f in [:get, :delete, :head, :options, :connect]
+        @eval begin
+            function ($f)(uri::URI; query::Dict = Dict(),
+                                    headers::Dict{String, String} = Dict{String, String}())
+
+                query_str = format_query_str(query; uri = uri)
+                ($f)(URI(uri; query = query_str), "", headers)
+            end
+        end
+    end
+
+    for f in [:post, :put, :patch, :trace]
+        @eval begin
+            function ($f)(uri::URI; headers = Dict{String, String}(),
+                                    data = Dict(),
+                                    query::Dict = Dict())
+
+                headers["Content-Type"] = "application/json"
+                query_str = format_query_str(query; uri = uri)
+                ($f)(URI(uri; query = query_str), json(data), headers)
+            end
+        end
+    end
+
 end
