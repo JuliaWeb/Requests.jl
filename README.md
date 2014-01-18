@@ -21,19 +21,19 @@ options("http://httpbin.org/get")
 ### Add query parameters
 
 ```julia
-get("http://httpbin.org/get"; query = { "title" => "page1" })
+get("http://httpbin.org/get"; query = {"title" => "page1"})
 ```
 
 ### Add data
 
 ```julia
-post("http://httpbin.org/post"; data = { "id" => "1fc80620-7fd3-11e3-80a5-7995390c4a5e" })
+post("http://httpbin.org/post"; data = {"id" => "1fc80620-7fd3-11e3-80a5-7995390c4a5e"})
 ```
 
 ### Set headers
 
 ```julia
-post("http://httpbin.org/post"; headers = { "Date" => "Tue, 15 Nov 1994 08:12:31 GMT" })
+post("http://httpbin.org/post"; headers = {"Date" => "Tue, 15 Nov 1994 08:12:31 GMT"})
 ```
 
 ### Inspect responses
