@@ -1,7 +1,5 @@
 # Requests.jl
 
-#### HTTP for Julians.
-
 ## Quickstart
 
 ```
