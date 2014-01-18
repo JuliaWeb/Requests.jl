@@ -8,7 +8,7 @@ module WWWClient
     using Codecs
     using JSON
 
-    export URI, get, post, put, delete, patch
+    export URI, get, post, put, delete, head, options, patch
 
     ## URI Parsing
 
