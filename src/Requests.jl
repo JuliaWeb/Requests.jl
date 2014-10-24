@@ -27,11 +27,11 @@
     end
 
     function default_request(method,resource,host,data,user_headers=Dict{None,None}())
-        headers = (String => String)[
+        headers = Dict{String => String}(
             "User-Agent" => "Requests.jl/0.0.0",
             "Host" => host,
             "Accept" => "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-            ]
+            )
         if !isempty(data)
             headers["Content-Length"] = dec(sizeof(data))
         end
