@@ -117,10 +117,45 @@
         return 0
     end
 
+    # Cookie fields can either be a key-value pair, or just a key
+    function make_cookie_field(keyval)
+        if keyval[2] == nothing
+            return keyval[1]
+        else
+            return "$(keyval[1])=$(keyval[2])"
+        end
+    end
+
+    # Given two headers with the same name, merge their contents
+    function merge_cookie_headers(h1, h2)
+        # Split them into separate key, value pairs
+        h1 = map(x -> split(strip(x), "="), split(h1, ";"))
+        h2 = map(x -> split(strip(x), "="), split(h2, ";"))
+
+        # For each pair, merge.  If we have conflicts (e.g. two identical keys) prefer h2
+        merged = @compat Dict()
+        for keyval in vcat(h1, h2)
+            if length(keyval) > 1
+                merged[keyval[1]] = keyval[2]
+            else
+                merged[keyval[1]] = nothing
+            end
+        end
+
+        # Reduce all elements of the dictionary to strings, then join them by semicolons
+        return join( [make_cookie_field(keyval) for keyval in merged], "; ")
+    end
+
     function on_header_value(parser, at, len)
         r = pd(parser).current_response
         s = bytestring(convert(Ptr{Uint8}, at),int(len))
-        r.headers[r.headers["current_header"]] = s
+        
+        # If we already have this header included, and it's a Cookie header, then merge them
+        if haskey(r.headers, r.headers["current_header"]) && contains(r.headers["current_header"], "Cookie")
+            r.headers[r.headers["current_header"]] = merge_cookie_headers(r.headers[r.headers["current_header"]], s)
+        else
+            r.headers[r.headers["current_header"]] = s
+        end
         r.headers["current_header"] = ""
         # delete!(r.headers, "current_header")
         return 0
