@@ -118,7 +118,8 @@
 
     function on_header_value(parser, at, len)
         r = pd(parser).current_response
-        s = bytestring(convert(Ptr{Uint8}, at),@compat Int(len))
+        l = @compat Int(len)
+        s = (l ==0 || at == C_NULL) ? "" : bytestring(convert(Ptr{Uint8}, at), l)
         r.headers[r.headers["current_header"]] = s
         r.headers["current_header"] = ""
         # delete!(r.headers, "current_header")
