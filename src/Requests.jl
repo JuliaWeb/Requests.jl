@@ -438,11 +438,12 @@
             begin
                 for i = 1:length(files)
                     file = files[i]
-                    write_part_header(stream,file, boundary)
+                    write_part_header(stream, file, boundary)
                     write_file(stream,file.file,datasizes[i],file.close)
                     write(stream,CRLF)
                 end
                 write(stream,"--$boundary--")
+                write(stream,CRLF)
             end
         end
 
@@ -455,7 +456,6 @@
             boundary = choose_boundary()
             headers["Content-Type"] = multipart_mime*boundary
         else
-
             if headers["Content-Type"][1:sizeof(multipart_mime)] != multipart_mime
                 error("Cannot extract boundary from MIME type")
             end
@@ -501,7 +501,7 @@
             totalsize += partheadersize(file,size,boundary)
         end
         # "--" (2) + boundary (sizeof(boundary)) + "--" (2)
-        totalsize += 2 + sizeof(boundary) + 2
+        totalsize += 2 + sizeof(boundary) + 4
 
         req = default_request(uri,headers,"",verb)
 
