@@ -118,7 +118,8 @@
 
     function on_header_value(parser, at, len)
         r = pd(parser).current_response
-        s = bytestring(convert(Ptr{Uint8}, at),@compat Int(len))
+        l = @compat Int(len)
+        s = (l ==0 || at == C_NULL) ? "" : bytestring(convert(Ptr{Uint8}, at), l)
         r.headers[r.headers["current_header"]] = s
         r.headers["current_header"] = ""
         # delete!(r.headers, "current_header")
@@ -440,11 +441,12 @@
             begin
                 for i = 1:length(files)
                     file = files[i]
-                    write_part_header(stream,file, boundary)
+                    write_part_header(stream, file, boundary)
                     write_file(stream,file.file,datasizes[i],file.close)
                     write(stream,CRLF)
                 end
                 write(stream,"--$boundary--")
+                write(stream,CRLF)
             end
         end
 
@@ -457,7 +459,6 @@
             boundary = choose_boundary()
             headers["Content-Type"] = multipart_mime*boundary
         else
-
             if headers["Content-Type"][1:sizeof(multipart_mime)] != multipart_mime
                 error("Cannot extract boundary from MIME type")
             end
@@ -503,7 +504,7 @@
             totalsize += partheadersize(file,size,boundary)
         end
         # "--" (2) + boundary (sizeof(boundary)) + "--" (2)
-        totalsize += 2 + sizeof(boundary) + 2
+        totalsize += 2 + sizeof(boundary) + 4
 
         req = default_request(uri,headers,"",verb)
 
