@@ -1,6 +1,7 @@
     module Requests
 
-    import Base: get, put, write
+    import Base: get, write
+    VERSION < v"0.4.0-" && import Base.put #put was deprecated in julia v0.3 and removed entirely in v0.4
     import Base.FS: File
 
     using Compat
@@ -28,7 +29,7 @@
 
     function default_request(method,resource,host,data,user_headers=Dict{None,None}())
         headers = @compat Dict(
-            "User-Agent" => "Requests.jl/0.0.0",
+            "User-Agent" => "Requests.jl/"*string(Pkg.installed("Requests")),
             "Host" => host,
             "Accept" => "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
             )
@@ -143,7 +144,9 @@
 
     function on_body(parser, at, len)
         r = pd(parser).current_response
-        r.data = string(r.data, bytestring(convert(Ptr{Uint8}, at), len))
+        olddata = isa(r.data, AbstractString) ? r.data.data : r.data
+        newdata = UInt8[unsafe_load(convert(Ptr{Uint8}, at), i) for i=0:len-1]
+        r.data = UInt8[olddata; newdata]
         return 0
     end
 
@@ -153,6 +156,11 @@
         r.finished = true
         close(p.sock)
 
+        #If MIME type allows, convert r.data to a Julia string
+        mimetype = r.headers["Content-Type"]
+        if (contains(mimetype, "charset=utf-8") || contains(mimetype, "charset=us-ascii"))
+            r.data = bytestring(r.data)
+        end
         # delete the temporary header key
         pop!(r.headers, "current_header", nothing)
         # delete!(r.headers, "current_header")
@@ -305,7 +313,7 @@
 
     # Determine whether or not we need to use
     datasize(::IO) = -1
-    datasize(f::Union(String,Array{Uint8})) = sizeof(f)
+    datasize(f::Union(String,Vector{Uint8})) = sizeof(f)
     datasize(f::File) = filesize(f)
     datasize(f::IOBuffer) = nb_available(f)
     function datasize(io::IOStream)
@@ -354,18 +362,18 @@
     # Write a file by mmaping it
     function write_file(stream,file::Union(IOStream,Base.File),datasize,doclose)
         @assert datasize != -1
-        write(stream,mmap_array(Uint8,(datasize,),file,position(file)))
+        write(stream,Mmap.mmap(file, Vector{Uint8}, (datasize,), position(file)))
         doclose && close(file)
     end
 
     # Write data already in memory
-    function write_file(stream,file::Union(String,Array{Uint8}),datasize,doclose)
+    function write_file(stream,file::Union(String,Vector{Uint8}),datasize,doclose)
         @assert datasize != -1
         write(stream,file)
         doclose && close(file)
     end
 
-    function write_file(stream,file::Union(String,Array{Uint8}),datasize,doclose)
+    function write_file(stream,file::Union(String,Vector{Uint8}),datasize,doclose)
         @assert datasize != -1
         write(stream,file)
         doclose && close(file)
