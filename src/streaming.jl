@@ -160,17 +160,38 @@ function Base.show(io::IO, err::ProxyException)
     print(io, "Failed to open CONNECT tunnel on proxy server. Proxy response was $(err.resp)")
 end
 
+# No proxy list is a list of daomin extensions
+# This requires a suffix check and also an explicit
+# check for base urls,
+# no_proxy = ".foo.com,localhost"
+# check_no_proxy( "www.foo.com", ".foo.com" ) == true
+# check_no_proxy( "foo.com", ".foo.com") == true
+# check_no_proxy( "barfoo.com", ".foo.com") == false
+# check_no_proxy( "localhost", "localhost") == true
+function check_no_proxy( host, suffix )
+  suffix[1] =='.' && suffix[2:end] == host && return true
+  length(host) < length( suffix ) && return false
+  host[length(host)-length(suffix)+1:end] == suffix && return true
+  return false
+end
+
+function check_no_proxy( uri::URI, no_proxy::Vector{ASCIIString} )
+  return any( (suffix)-> check_no_proxy( uri.host, suffix ), no_proxy )
+end
+
 function open_stream(req::Request, tls_conf=TLS_VERIFY, timeout=Inf,
-                     http_proxy=Nullable{URI}(), https_proxy=Nullable{URI}())
+                     http_proxy=Nullable{URI}(),
+                     https_proxy=Nullable{URI}(),
+                     no_proxy = Vector{ASCIIString}())
     uri = req.uri
     connect_method = :direct
     if scheme(uri) == "http"
-        if !isnull(http_proxy)
+        if !isnull(http_proxy) && !check_no_proxy( uri, no_proxy)
             uri = get(http_proxy)
             connect_method = :tunnel
         end
     elseif scheme(uri) == "https"
-        if !isnull(https_proxy)
+        if !isnull(https_proxy) && !check_no_proxy( uri, no_proxy)
             uri = get(https_proxy)
             connect_method = :tunnel
         end
@@ -181,32 +202,37 @@ function open_stream(req::Request, tls_conf=TLS_VERIFY, timeout=Inf,
         req.resource = "$(req.uri.scheme)://$(req.uri.host)$(resourcefor(req.uri))"
     end
     ip = Base.getaddrinfo(uri.host)
-    if scheme(req.uri) == "http"
-        stream = Base.connect(ip, http_port(uri))
-    else
-        # Initialize HTTPS
-        if connect_method == :tunnel
-            sock = Base.connect(ip, http_port(uri))
-            tunnel_req = Request()
-            tunnel_req.method = "CONNECT"
-            tunnel_resp = Response()
-            tunnel_resp.request = Nullable(tunnel_req)
-            tunnel_resp_stream = ResponseStream(tunnel_resp, sock)
-            tunnel_resp_stream.timeout = timeout
-            write(sock, "CONNECT $(req.uri.host):$(https_port(req.uri)) HTTP/1.1\r\n\r\n")
-            process_response(tunnel_resp_stream)
-            if statuscode(tunnel_resp) ≠ 200
-                throw(ProxyException(tunnel_resp))
-            end
-        else
-            sock = Base.connect(ip, uri.port == 0 ? 443 : uri.port)
+
+    # If this is a proxy request - tunnel it
+    # What happens of the proxy is also SSL ?
+    if connect_method == :tunnel
+        sock = Base.connect(ip, http_port(uri))
+        tunnel_req = Request()
+        tunnel_req.method = "CONNECT"
+        tunnel_resp = Response()
+        tunnel_resp.request = Nullable(tunnel_req)
+        tunnel_resp_stream = ResponseStream(tunnel_resp, sock)
+        tunnel_resp_stream.timeout = timeout
+        write(sock, "CONNECT $(req.uri.host):$(https_port(req.uri)) HTTP/1.1\r\n\r\n")
+        process_response(tunnel_resp_stream)
+        if statuscode(tunnel_resp) ≠ 200
+            throw(ProxyException(tunnel_resp))
         end
-        stream = MbedTLS.SSLContext()
-        MbedTLS.setup!(stream, tls_conf)
-        MbedTLS.set_bio!(stream, sock)
-        MbedTLS.hostname!(stream, req.uri.host)
-        MbedTLS.handshake(stream)
+    else
+        sock = Base.connect(ip, uri.port == 0 ? scheme( req.uri ) =="http"?80:443 : uri.port)
     end
+
+    # If this is ssl lift the connection
+    if scheme(req.uri) == "http"
+      stream = sock
+    else
+      stream = MbedTLS.SSLContext()
+      MbedTLS.setup!(stream, tls_conf)
+      MbedTLS.set_bio!(stream, sock)
+      MbedTLS.hostname!(stream, req.uri.host)
+      MbedTLS.handshake(stream)
+    end
+
     resp = Response()
     empty!(resp.headers)
     resp.request = Nullable(req)
