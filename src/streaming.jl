@@ -160,7 +160,7 @@ function Base.show(io::IO, err::ProxyException)
     print(io, "Failed to open CONNECT tunnel on proxy server. Proxy response was $(err.resp)")
 end
 
-# No proxy list is a list of daomin extensions
+# No proxy list is a list of domain extensions
 # This requires a suffix check and also an explicit
 # check for base urls,
 # no_proxy = ".foo.com,localhost"
