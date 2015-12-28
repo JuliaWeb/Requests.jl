@@ -119,7 +119,8 @@ function mimetype(r::Response)
     end
 end
 
-istext(r::Response) = any(p->ismatch(p, get(mimetype(r))), [r"^text/", r"/xml$"])
+istext(r::Response) = any(p->ismatch(p, get(mimetype(r))),
+                         [r"^text/", r"/xml$", r"/json$"])
 data(r::Response) = istext(r) ? text(r) : bytes(r)
 
 function contentdisposition(r::Response)
