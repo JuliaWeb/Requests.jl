@@ -1,7 +1,7 @@
 __precompile__()
 module Requests
 
-export URI, FileParam, headers, cookies, statuscode, post, requestfor
+export URI, FileParam, headers, data, cookies, statuscode, post, requestfor
 export get_streaming, post_streaming, write_chunked
 export view, save
 export set_proxy, set_https_proxy, get_request_settings
@@ -118,6 +118,9 @@ function mimetype(r::Response)
         return Nullable{UTF8String}()
     end
 end
+
+istext(r::Response) = any(p->ismatch(p, get(mimetype(r))), [r"^text/", r"/xml$"])
+data(r::Response) = istext(r) ? text(r) : bytes(r)
 
 function contentdisposition(r::Response)
     if haskey(headers(r), "Content-Disposition")
