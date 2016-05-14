@@ -122,7 +122,7 @@ function mimetype(r::Response)
         ct = split(headers(r)["Content-Type"], ";")[1]
         return Nullable(ct)
     else
-        return Nullable{UTF8String}()
+        return Nullable{String}()
     end
 end
 
@@ -136,7 +136,7 @@ function contentdisposition(r::Response)
             end
         end
     end
-    return Nullable{UTF8String}()
+    return Nullable{String}()
 end
 
 """
@@ -400,7 +400,7 @@ end
 for f in [:get, :post, :put, :delete, :head,
           :trace, :options, :patch, :connect]
     f_str = uppercase(string(f))
-    f_stream = symbol(string(f, "_streaming"))
+    f_stream = Symbol(string(f, "_streaming"))
     @eval begin
         function ($f)(uri::URI, data::AbstractString; headers::Dict=Dict())
             do_request(uri, $f_str; data=data, headers=headers)
