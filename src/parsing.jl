@@ -12,7 +12,8 @@ immutable ResponseParser
         settings = ParserSettings(on_message_begin_cb, on_url_cb,
                           on_status_complete_cb, on_header_field_cb,
                           on_header_value_cb, on_headers_complete_cb,
-                          on_body_cb, on_message_complete_cb)
+                          on_body_cb, on_message_complete_cb,
+                          on_chunk_header_cb, on_chunk_complete_cb)
 
         new(parser, settings)
     end
@@ -158,6 +159,14 @@ function on_message_complete(parser)
     return 0
 end
 
+function on_chunk_header(parser)
+    return 0
+end
+
+function on_chunk_complete(parser)
+    return 0
+end
+
 # Passes `request_data` into `parser`
 function add_data(parser::ResponseParser, request_data)
     http_parser_execute(parser.parser, parser.settings, request_data)
@@ -178,4 +187,6 @@ function __init_parsing__()
     global const on_headers_complete_cb = cfunction(on_headers_complete, HTTP_CB...)
     global const on_body_cb = cfunction(on_body, HTTP_DATA_CB...)
     global const on_message_complete_cb = cfunction(on_message_complete, HTTP_CB...)
+    global const on_chunk_header_cb = cfunction(on_chunk_header, HTTP_CB...)
+    global const on_chunk_complete_cb = cfunction(on_chunk_complete, HTTP_CB...)
 end
