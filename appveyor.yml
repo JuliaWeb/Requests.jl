@@ -9,6 +9,7 @@ branches:
   only:
     - master
     - /release-.*/
+    - tk/avtest
 
 notifications:
   - provider: Email
