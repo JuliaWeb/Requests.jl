@@ -40,7 +40,7 @@ end
 
 function on_header_field(parser, at, len)
     response_stream = pd(parser)
-    header = bytestring(convert(Ptr{UInt8}, at))
+    header = String(convert(Ptr{UInt8}, at))
     header_field = header[1:len]
     if response_stream.state == OnHeaderField
         field = string(get(response_stream.current_header, header_field))
@@ -81,7 +81,7 @@ const is_set_cookie = r"set-cookie"i
 function on_header_value(parser, at, len)
     response_stream = pd(parser)
     resp = response_stream.response
-    s = bytestring(convert(Ptr{UInt8}, at), Int(len))
+    s = String(convert(Ptr{UInt8}, at), Int(len))
     current_header = get(response_stream.current_header)
     if response_stream.state == OnHeaderValue
         if is_set_cookie(current_header)
