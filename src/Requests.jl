@@ -18,6 +18,7 @@ import URIParser: URI
 import HttpCommon: Cookie
 
 using Compat
+import Compat: String, ASCIIString, UTF8String
 using HttpParser
 using HttpCommon
 using URIParser
@@ -215,7 +216,7 @@ end
 function default_request(uri::URI,headers,data,method)
     resource = resourcefor(uri)
     if !isempty(uri.userinfo) && !haskey(headers,"Authorization")
-        headers["Authorization"] = "Basic $(bytestring(encode(Base64, uri.userinfo)))"
+        headers["Authorization"] = "Basic $(String(encode(Base64, uri.userinfo)))"
     end
     host = uri.port == 0 ? uri.host : "$(uri.host):$(uri.port)"
     request = default_request(method,resource,host,data,headers)
@@ -400,7 +401,7 @@ end
 for f in [:get, :post, :put, :delete, :head,
           :trace, :options, :patch, :connect]
     f_str = uppercase(string(f))
-    f_stream = symbol(string(f, "_streaming"))
+    f_stream = Symbol(string(f, "_streaming"))
     @eval begin
         function ($f)(uri::URI, data::AbstractString; headers::Dict=Dict())
             do_request(uri, $f_str; data=data, headers=headers)
