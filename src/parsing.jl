@@ -68,7 +68,7 @@ function parse_cookies!(response, cookie_strings)
                 name, value = nameval
                 c.attrs[strip(name)] = strip(value)
             else
-                c.attrs[strip(nameval[1])] = utf8("")
+                ec.attrs[strip(nameval[1])] = Compat.String("")
             end
         end
         response.cookies[c.name] = c
