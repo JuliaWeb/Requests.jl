@@ -68,7 +68,7 @@ function parse_cookies!(response, cookie_strings)
                 name, value = nameval
                 c.attrs[strip(name)] = strip(value)
             else
-                ec.attrs[strip(nameval[1])] = Compat.String("")
+                c.attrs[strip(nameval[1])] = Compat.String("")
             end
         end
         response.cookies[c.name] = c
@@ -140,7 +140,7 @@ end
 
 function on_body(parser, at, len)
     response_stream = pd(parser)
-    append!(response_stream.buffer.data, pointer_to_array(convert(Ptr{UInt8}, at), (len,)))
+    append!(response_stream.buffer.data, unsafe_wrap(Array, convert(Ptr{UInt8}, at), (len,)))
     response_stream.buffer.size = length(response_stream.buffer.data)
     response_stream.state = OnBody
     notify(response_stream.state_change)
