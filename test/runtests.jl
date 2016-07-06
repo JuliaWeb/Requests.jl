@@ -13,6 +13,9 @@ import Requests: get, post, put, delete, options, bytes, text, json, history
 @test delete("http://httpbin.org/delete").status == 200
 @test options("http://httpbin.org/get").status == 200
 
+# basic authorization encoding
+data = json(get("https://user:password@httpbin.org/get"))
+@test data["headers"]["Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
 
 # check query params -------
 
