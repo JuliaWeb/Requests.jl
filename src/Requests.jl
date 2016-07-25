@@ -16,6 +16,7 @@ end
 
 import URIParser: URI
 import HttpCommon: Cookie
+import HTTP2.Session
 
 using Compat
 using HttpParser
@@ -286,7 +287,11 @@ macro check_body()
   end
 end
 
-function do_request(uri::URI, verb; kwargs...)
+function do_request(uri::URI, verb; http2::Bool=false, kwargs...)
+    if http2
+        return do_http2_request(uri, verb; kwargs...)
+    end
+
     response_stream = do_stream_request(uri, verb; kwargs...)
     response = response_stream.response
     response.data = read(response_stream)
@@ -301,6 +306,74 @@ end
 parse_request_data(data) = (data, "application/octet-stream")
 parse_request_data(data::Associative) =
   (format_query_str(data), "application/x-www-form-urlencoded")
+
+function do_http2_request(uri::URI, verb; headers = Dict{AbstractString, AbstractString}(),
+                          cookies = nothing,
+                          data = nothing,
+                          json = nothing,
+                          timeout = nothing,
+                          query::Dict = Dict(),
+                          tls_conf = TLS_VERIFY,
+                          write_body = true,
+                          proxy = SETTINGS.http_proxy,
+                          https_proxy = SETTINGS.https_proxy,
+                          upgrade = false
+                          )
+    if upgrade && uri.scheme == "http"
+        upgrade_headers = Dict{AbstractString, AbstractString}()
+        upgrade_headers["Connection"] = "Upgrade, HTTP2-Settings"
+        upgrade_headers["Upgrade"] = "h2c"
+        response_stream = do_stream_request(uri, verb; kwargs...)
+        response = response_stream.response
+        if !(response.status == 101)
+            return response
+        end
+    end
+
+    query_str = format_query_str(query; uri = uri)
+    newuri = URI(uri; query = query_str)
+    timeout_sec = timeout_in_sec(timeout)
+
+    headers[":method"] = string(verb)
+    headers[":path"] = newuri.path
+    headers[":scheme"] = "http"
+    headers[":authority"] = uri.host
+
+    body = ""
+    has_body = false
+    if json ≠ nothing
+        @check_body
+        if get(headers,"Content-Type","application/json") != "application/json"
+            error("Tried to send json data with incompatible Content-Type")
+        end
+        headers["Content-Type"] = "application/json"
+        body = JSON.json(json)
+    end
+
+    if data ≠ nothing
+        @check_body
+        body, default_content_type = parse_request_data(data)
+        if "Content-Type" ∉ keys(headers)
+            headers["Content-Type"] = default_content_type
+        end
+    end
+
+    if cookies ≠ nothing
+        headers["Cookie"] = cookie_request_header(cookies)
+    end
+
+    if upgrade
+        response_stream = response_stream.socket
+    else
+        response_stream = open_socket(newuri, tls_conf)
+    end
+
+    connection = Session.new_connection(response_stream; isclient=true)
+    Session.put_act!(connection, Session.ActSendHeaders(UInt32(13), headers, true))
+
+    (response_headers, response_body) = (Session.take_evt!(connection).headers, Session.take_evt!(connection).data)
+    Response(response_body, response_headers)
+end
 
 function do_stream_request(uri::URI, verb; headers = Dict{AbstractString, AbstractString}(),
                             cookies = nothing,
@@ -402,8 +475,8 @@ for f in [:get, :post, :put, :delete, :head,
     f_str = uppercase(string(f))
     f_stream = Symbol(string(f, "_streaming"))
     @eval begin
-        function ($f)(uri::URI, data::AbstractString; headers::Dict=Dict())
-            do_request(uri, $f_str; data=data, headers=headers)
+        function ($f)(uri::URI, data::AbstractString; headers::Dict=Dict(), http2::Bool=false)
+            do_request(uri, $f_str; data=data, headers=headers, http2=http2)
         end
         function ($f_stream)(uri::URI, data::AbstractString; headers::Dict=Dict())
             do_stream_request(uri, $f_str; data=data, headers=headers)

@@ -217,6 +217,22 @@ function open_stream(req::Request, tls_conf=TLS_VERIFY, timeout=Inf,
     stream
 end
 
+function open_socket(uri::URI, tls_conf=TLS_VERIFY)
+    ip = Base.getaddrinfo(uri.host)
+    if scheme(uri) == "http"
+        stream = Base.connect(ip, http_port(uri))
+    else
+        sock = Base.connect(ip, uri.port == 0 ? 443 : uri.port)
+        stream = MbedTLS.SSLContext()
+        MbedTLS.setup!(stream, tls_conf)
+        MbedTLS.set_bio!(stream, sock)
+        MbedTLS.hostname!(stream, uri.host)
+        MbedTLS.handshake(stream)
+        println("Handshake finished")
+    end
+    stream
+end
+
 function __init_streaming__()
     global const TLS_VERIFY = get_default_tls_config(true)
     global const TLS_NOVERIFY = get_default_tls_config(false)
