@@ -217,11 +217,18 @@ function open_stream(req::Request, tls_conf=TLS_VERIFY, timeout=Inf,
     stream
 end
 
+function open_http_socket(uri::URI)
+    ip = Base.getaddrinfo(uri.host)
+    sock = Base.connect(ip, http_port(uri))
+
+    sock
+end
+
 function open_https_socket(uri::URI, tls_conf=TLS_VERIFY, http2=false)
     @assert scheme(uri) == "https"
 
     ip = Base.getaddrinfo(uri.host)
-    sock = Base.connect(ip, uri.port == 0 ? 443 : uri.port)
+    sock = Base.connect(ip, http_port(uri))
 
     if http2
         MbedTLS.set_alpn!(tls_conf, ["h2"])

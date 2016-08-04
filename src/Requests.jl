@@ -367,8 +367,10 @@ function do_http2_request(uri::URI, verb; headers = Dict{AbstractString, Abstrac
 
     if upgrade
         response_stream = response_stream.socket
-    else
+    elseif scheme(uri) == "https"
         response_stream = open_https_socket(newuri, tls_conf, true)
+    else
+        response_stream = open_http_socket(newuri)
     end
 
     connection = Session.new_connection(response_stream; isclient=true)
