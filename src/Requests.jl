@@ -17,6 +17,7 @@ end
 import URIParser: URI
 import HttpCommon: Cookie
 import HTTP2.Session
+import HTTP2.Frame
 
 using Compat
 using HttpParser
@@ -323,7 +324,9 @@ function do_http2_request(uri::URI, verb; headers = Dict{AbstractString, Abstrac
         upgrade_headers = Dict{AbstractString, AbstractString}()
         upgrade_headers["Connection"] = "Upgrade, HTTP2-Settings"
         upgrade_headers["Upgrade"] = "h2c"
-        response_stream = do_stream_request(uri, verb; kwargs...)
+        upgrade_headers["HTTP2-Settings"] = ascii(base64encode(Frame.encode(Frame.SettingsFrame())))
+
+        response_stream = do_stream_request(uri, verb; headers = upgrade_headers, timeout = timeout)
         response = response_stream.response
         if !(response.status == 101)
             return response
@@ -336,7 +339,7 @@ function do_http2_request(uri::URI, verb; headers = Dict{AbstractString, Abstrac
 
     headers[":method"] = string(verb)
     headers[":path"] = newuri.path
-    headers[":scheme"] = "http"
+    headers[":scheme"] = scheme(uri)
     headers[":authority"] = uri.host
 
     body = ""
@@ -365,7 +368,7 @@ function do_http2_request(uri::URI, verb; headers = Dict{AbstractString, Abstrac
     if upgrade
         response_stream = response_stream.socket
     else
-        response_stream = open_socket(newuri, tls_conf)
+        response_stream = open_https_socket(newuri, tls_conf, true)
     end
 
     connection = Session.new_connection(response_stream; isclient=true)

@@ -217,18 +217,23 @@ function open_stream(req::Request, tls_conf=TLS_VERIFY, timeout=Inf,
     stream
 end
 
-function open_socket(uri::URI, tls_conf=TLS_VERIFY)
+function open_https_socket(uri::URI, tls_conf=TLS_VERIFY, http2=false)
+    @assert scheme(uri) == "https"
+
     ip = Base.getaddrinfo(uri.host)
-    if scheme(uri) == "http"
-        stream = Base.connect(ip, http_port(uri))
-    else
-        sock = Base.connect(ip, uri.port == 0 ? 443 : uri.port)
-        stream = MbedTLS.SSLContext()
-        MbedTLS.setup!(stream, tls_conf)
-        MbedTLS.set_bio!(stream, sock)
-        MbedTLS.hostname!(stream, uri.host)
-        MbedTLS.handshake(stream)
-        println("Handshake finished")
+    sock = Base.connect(ip, uri.port == 0 ? 443 : uri.port)
+
+    if http2
+        MbedTLS.set_alpn!(tls_conf, ["h2"])
+    end
+
+    stream = MbedTLS.SSLContext()
+    MbedTLS.setup!(stream, tls_conf)
+    MbedTLS.set_bio!(stream, sock)
+    MbedTLS.hostname!(stream, uri.host)
+    MbedTLS.handshake(stream)
+    if http2
+        @assert MbedTLS.alpn_proto(stream) == "h2"
     end
     stream
 end
