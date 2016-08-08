@@ -389,12 +389,12 @@ function do_http2_request(uri::URI, verb; headers = Dict{AbstractString, Abstrac
         if evt.stream_identifier == main_stream_identifier
             cur_response = main_response
         else
-            cur_response = get(responses, evt.stream_identifier, (Request(), Response()))
+            cur_response = get(promises, evt.stream_identifier, (Request(), Response()))[2]
         end
 
         if isa(evt, Session.EvtRecvHeaders)
             for k in keys(evt.headers)
-                cur_response = evt.headers[k]
+                cur_response.headers[k] = evt.headers[k]
             end
             if evt.is_end_stream
                 remaining_streams -= 1
@@ -404,9 +404,14 @@ function do_http2_request(uri::URI, verb; headers = Dict{AbstractString, Abstrac
             if evt.is_end_stream
                 remaining_streams -= 1
             end
-        elseif isa(evt, Session.Promise)
-            cur_request = get(response, evt.stream_identifier)[1]
-            cur_request.headers = evt.headers
+        elseif isa(evt, Session.EvtPromise)
+            promise_request = Request()
+            promise_response = Response()
+            for k in keys(evt.headers)
+                promise_request.headers[k] = evt.headers[k]
+            end
+            promises[evt.promised_stream_identifier] = (promise_request, promise_response)
+            remaining_streams += 1
         end
 
         if remaining_streams == 0
@@ -418,7 +423,7 @@ function do_http2_request(uri::URI, verb; headers = Dict{AbstractString, Abstrac
 
     close(connection)
     if length(promises) > 0
-        (main_response, values(promises))
+        (main_response, collect(values(promises)))
     else
         main_response
     end
