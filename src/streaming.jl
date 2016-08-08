@@ -187,7 +187,7 @@ function open_stream(req::Request, tls_conf=TLS_VERIFY, timeout=Inf,
     else
         # Initialize HTTPS
         if connect_method == :tunnel
-            sock = Base.connect(ip, http_port(uri))
+            sock = Base.connect(ip, https_port(uri))
             tunnel_req = Request()
             tunnel_req.method = "CONNECT"
             tunnel_resp = Response()
@@ -228,7 +228,7 @@ function open_https_socket(uri::URI, tls_conf=TLS_VERIFY, http2=false)
     @assert scheme(uri) == "https"
 
     ip = Base.getaddrinfo(uri.host)
-    sock = Base.connect(ip, http_port(uri))
+    sock = Base.connect(ip, https_port(uri))
 
     if http2
         MbedTLS.set_alpn!(tls_conf, ["h2"])
