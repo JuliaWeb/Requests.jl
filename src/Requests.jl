@@ -374,10 +374,54 @@ function do_http2_request(uri::URI, verb; headers = Dict{AbstractString, Abstrac
     end
 
     connection = Session.new_connection(response_stream; isclient=true)
-    Session.put_act!(connection, Session.ActSendHeaders(UInt32(13), headers, true))
 
-    (response_headers, response_body) = (Session.take_evt!(connection).headers, Session.take_evt!(connection).data)
-    Response(response_body, response_headers)
+    main_stream_identifier = Session.next_free_stream_identifier(connection)
+    Session.put_act!(connection, Session.ActSendHeaders(main_stream_identifier, headers, false))
+    Session.put_act!(connection, Session.ActSendData(main_stream_identifier, bytestring(body), true))
+
+    main_response = Response()
+    promises = Dict{UInt32, Tuple{Request, Response}}()
+
+    remaining_streams = 1
+
+    evt = Session.take_evt!(connection)
+    while !isa(evt, Session.EvtGoaway)
+        if evt.stream_identifier == main_stream_identifier
+            cur_response = main_response
+        else
+            cur_response = get(responses, evt.stream_identifier, (Request(), Response()))
+        end
+
+        if isa(evt, Session.EvtRecvHeaders)
+            for k in keys(evt.headers)
+                cur_response = evt.headers[k]
+            end
+            if evt.is_end_stream
+                remaining_streams -= 1
+            end
+        elseif isa(evt, Session.EvtRecvData)
+            cur_response.data = vcat(cur_response.data, evt.data)
+            if evt.is_end_stream
+                remaining_streams -= 1
+            end
+        elseif isa(evt, Session.Promise)
+            cur_request = get(response, evt.stream_identifier)[1]
+            cur_request.headers = evt.headers
+        end
+
+        if remaining_streams == 0
+            break
+        end
+
+        evt = Session.take_evt!(connection)
+    end
+
+    close(connection)
+    if length(promises) > 0
+        (main_response, values(promises))
+    else
+        main_response
+    end
 end
 
 function do_stream_request(uri::URI, verb; headers = Dict{AbstractString, AbstractString}(),
