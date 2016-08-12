@@ -27,6 +27,14 @@ delete("http://httpbin.org/delete")
 options("http://httpbin.org/get")
 ```
 
+To make a HTTP/2 request, use:
+
+```julia
+get("https://http2.golang.org/"; http2=true)
+```
+
+Note that most servers that do support HTTP/2 only support it over HTTPS.
+
 ### Add query parameters
 
 ```julia
@@ -178,3 +186,5 @@ write_chunked(stream, "")  # Signal that the body is complete
 response = readall(stream)  # Get back the server's response
 
 ```
+
+Streaming is not supported over HTTP/2 because HTTP/2 is a binary protocol. To work with streaming data, use `HTTP2` library directly.
