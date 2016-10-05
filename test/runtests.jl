@@ -13,8 +13,6 @@ import Requests: get, post, put, delete, options, bytes, text, json, history
 @test delete("http://httpbin.org/delete").status == 200
 @test options("http://httpbin.org/get").status == 200
 
-@test get("https://http2.golang.org", http2=true).status == 200
-
 # check query params -------
 
 data = json(get("http://httpbin.org/get";
@@ -187,6 +185,7 @@ end
 
 # Test HTTPS
 @test statuscode(get("https://httpbin.org")) == 200
+@test get("https://http2.golang.org", http2=true).status == 200
 
 # Test output streaming
 let
