@@ -16,6 +16,8 @@ end
 
 import URIParser: URI
 import HttpCommon: Cookie
+import HTTP2.Session
+import HTTP2.Frame
 
 using Compat
 using HttpParser
@@ -286,7 +288,11 @@ macro check_body()
   end
 end
 
-function do_request(uri::URI, verb; kwargs...)
+function do_request(uri::URI, verb; http2::Bool=false, kwargs...)
+    if http2
+        return do_http2_request(uri, verb; kwargs...)
+    end
+
     response_stream = do_stream_request(uri, verb; kwargs...)
     response = response_stream.response
     response.data = read(response_stream)
@@ -301,6 +307,127 @@ end
 parse_request_data(data) = (data, "application/octet-stream")
 parse_request_data(data::Associative) =
   (format_query_str(data), "application/x-www-form-urlencoded")
+
+function do_http2_request(uri::URI, verb; headers = Dict{AbstractString, AbstractString}(),
+                          cookies = nothing,
+                          data = nothing,
+                          json = nothing,
+                          timeout = nothing,
+                          query::Dict = Dict(),
+                          tls_conf = TLS_VERIFY,
+                          write_body = true,
+                          proxy = SETTINGS.http_proxy,
+                          https_proxy = SETTINGS.https_proxy,
+                          upgrade = false
+                          )
+    if upgrade && uri.scheme == "http"
+        upgrade_headers = Dict{AbstractString, AbstractString}()
+        upgrade_headers["Connection"] = "Upgrade, HTTP2-Settings"
+        upgrade_headers["Upgrade"] = "h2c"
+        upgrade_headers["HTTP2-Settings"] = ascii(base64encode(Frame.encode(Frame.SettingsFrame())))
+
+        response_stream = do_stream_request(uri, verb; headers = upgrade_headers, timeout = timeout)
+        response = response_stream.response
+        if !(response.status == 101)
+            return response
+        end
+    end
+
+    query_str = format_query_str(query; uri = uri)
+    newuri = URI(uri; query = query_str)
+    timeout_sec = timeout_in_sec(timeout)
+
+    headers[":method"] = string(verb)
+    headers[":path"] = newuri.path
+    headers[":scheme"] = scheme(uri)
+    headers[":authority"] = uri.host
+
+    body = ""
+    has_body = false
+    if json ≠ nothing
+        @check_body
+        if get(headers,"Content-Type","application/json") != "application/json"
+            error("Tried to send json data with incompatible Content-Type")
+        end
+        headers["Content-Type"] = "application/json"
+        body = JSON.json(json)
+    end
+
+    if data ≠ nothing
+        @check_body
+        body, default_content_type = parse_request_data(data)
+        if "Content-Type" ∉ keys(headers)
+            headers["Content-Type"] = default_content_type
+        end
+    end
+
+    if cookies ≠ nothing
+        headers["Cookie"] = cookie_request_header(cookies)
+    end
+
+    if upgrade
+        response_stream = response_stream.socket
+    elseif scheme(uri) == "https"
+        response_stream = open_https_socket(newuri, tls_conf, true)
+    else
+        response_stream = open_http_socket(newuri)
+    end
+
+    connection = Session.new_connection(response_stream; isclient=true)
+
+    main_stream_identifier = Session.next_free_stream_identifier(connection)
+    Session.put_act!(connection, Session.ActSendHeaders(main_stream_identifier, headers, false))
+    Session.put_act!(connection, Session.ActSendData(main_stream_identifier, bytestring(body), true))
+
+    main_response = Response()
+    promises = Dict{UInt32, Tuple{Request, Response}}()
+
+    remaining_streams = 1
+
+    evt = Session.take_evt!(connection)
+    while !isa(evt, Session.EvtGoaway)
+        if evt.stream_identifier == main_stream_identifier
+            cur_response = main_response
+        else
+            cur_response = get(promises, evt.stream_identifier, (Request(), Response()))[2]
+        end
+
+        if isa(evt, Session.EvtRecvHeaders)
+            for k in keys(evt.headers)
+                cur_response.headers[k] = evt.headers[k]
+            end
+            if evt.is_end_stream
+                remaining_streams -= 1
+            end
+        elseif isa(evt, Session.EvtRecvData)
+            cur_response.data = vcat(cur_response.data, evt.data)
+            if evt.is_end_stream
+                remaining_streams -= 1
+            end
+        elseif isa(evt, Session.EvtPromise)
+            promise_request = Request()
+            promise_response = Response()
+            for k in keys(evt.headers)
+                promise_request.headers[k] = evt.headers[k]
+            end
+            promises[evt.promised_stream_identifier] = (promise_request, promise_response)
+            remaining_streams += 1
+        end
+
+        if remaining_streams == 0
+            break
+        end
+
+        evt = Session.take_evt!(connection)
+    end
+
+    close(connection)
+    if length(promises) > 0
+        (main_response, collect(values(promises)))
+    else
+        main_response
+    end
+end
 
 function do_stream_request(uri::URI, verb; headers = Dict{AbstractString, AbstractString}(),
                             cookies = nothing,
@@ -402,8 +529,8 @@ for f in [:get, :post, :put, :delete, :head,
     f_str = uppercase(string(f))
     f_stream = Symbol(string(f, "_streaming"))
     @eval begin
-        function ($f)(uri::URI, data::AbstractString; headers::Dict=Dict())
-            do_request(uri, $f_str; data=data, headers=headers)
+        function ($f)(uri::URI, data::AbstractString; headers::Dict=Dict(), http2::Bool=false)
+            do_request(uri, $f_str; data=data, headers=headers, http2=http2)
         end
         function ($f_stream)(uri::URI, data::AbstractString; headers::Dict=Dict())
             do_stream_request(uri, $f_str; data=data, headers=headers)
