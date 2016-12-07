@@ -121,7 +121,7 @@ function on_headers_complete(parser)
     response.headers["http_major"] = string(convert(Int, p.http_major))
     response.headers["http_minor"] = string(convert(Int, p.http_minor))
     response.headers["Keep-Alive"] = string(http_should_keep_alive(parser))
-    parse_cookies!(response, takebuf_string(response_stream.cookie_buffer))
+    parse_cookies!(response, Compat.String(take!(response_stream.cookie_buffer)))
 
     response_stream.state = HeadersDone
     notify(response_stream.state_change)

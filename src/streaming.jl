@@ -127,7 +127,7 @@ function Base.read(stream::ResponseStream)
     while stream.state < BodyDone
         wait(stream)
     end
-    takebuf_array(stream.buffer)
+    take!(stream.buffer)
 end
 
 function Base.read(stream::ResponseStream, ::Type{UInt8})
