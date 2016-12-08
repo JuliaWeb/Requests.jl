@@ -82,7 +82,7 @@ function write_part_header(stream,file::FileParam,boundary)
     write(buf,CRLF)
     !isempty(file.ContentType) && write(buf,ContentType_header,file.ContentType,CRLF)
     write(buf,CRLF)
-    write(stream,takebuf_array(buf))
+    write(stream,take!(buf))
 end
 
 # Write a file by reading it in 1MB chunks (unless we know its size and it's smaller than that)
@@ -116,7 +116,11 @@ end
 
 function write_file(stream,file::IOBuffer,datasize,doclose)
     @assert datasize != -1
+if VERSION < v"0.5.0-dev+4817"
     write(stream,sub(file.data,(position(file)+1):(position(file)+nb_available(file))))
+else
+    write(stream,Base.view(file.data,(position(file)+1):(position(file)+nb_available(file))))
+end
     doclose && close(file)
 end
 
