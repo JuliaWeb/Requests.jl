@@ -279,8 +279,9 @@ end
 
 macro check_body()
   has_body = esc(:has_body)
+  write_body = esc(:write_body)
   quote
-    write_body || error("Incompatible arguments: write_body cannot be false if a data argument is provided.")
+    $write_body || error("Incompatible arguments: write_body cannot be false if a data argument is provided.")
     $has_body && error("Multiple body options specified. Please only specify one")
     $has_body = true
   end
