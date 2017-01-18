@@ -150,6 +150,7 @@ function Base.close(stream::ResponseStream)
     nothing
 end
 
+Base.isopen(stream::ResponseStream) = isopen(stream.socket)
 Base.nb_available(stream::ResponseStream) = nb_available(stream.buffer)
 
 for getter in [:headers, :cookies, :statuscode, :requestfor, :history]

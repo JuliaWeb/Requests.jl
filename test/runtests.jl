@@ -222,6 +222,7 @@ let
     stream = Requests.get_streaming("http://httpbin.org/stream-bytes/100", query=Dict(:chunk_size=>10))
     close(stream)
     @test eof(stream)
+    @test !isopen(stream)
     @test isempty(read(stream))
 end
 
