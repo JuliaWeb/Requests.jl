@@ -222,8 +222,9 @@ let
     stream = Requests.get_streaming("http://httpbin.org/stream-bytes/100", query=Dict(:chunk_size=>10))
     close(stream)
     @test eof(stream)
-    @test !isopen(stream)
     @test isempty(read(stream))
+    VERSION < v"0.5" && Base.wait_close(stream.socket)
+    @test !isopen(stream)
 end
 
 # Proxy testing. Would be better to use a real proxy instead of using the real site
