@@ -218,6 +218,11 @@ let
         N += length(bytes)
     end
     @test N==100
+
+    stream = Requests.get_streaming("http://httpbin.org/stream-bytes/100", query=Dict(:chunk_size=>10))
+    close(stream)
+    @test eof(stream)
+    @test isempty(read(stream))
 end
 
 # Proxy testing. Would be better to use a real proxy instead of using the real site

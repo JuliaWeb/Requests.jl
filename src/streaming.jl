@@ -127,7 +127,7 @@ function Base.read(stream::ResponseStream)
     while stream.state < BodyDone
         wait(stream)
     end
-    take!(stream.buffer)
+    read(stream.buffer)
 end
 
 function Base.read(stream::ResponseStream, ::Type{UInt8})
@@ -144,7 +144,12 @@ function Base.readavailable(stream::ResponseStream)
     read(stream, nb_available(stream))
 end
 
-Base.close(stream::ResponseStream) = close(stream.socket)
+function Base.close(stream::ResponseStream)
+    close(stream.socket)
+    seekend(stream.buffer)
+    nothing
+end
+
 Base.nb_available(stream::ResponseStream) = nb_available(stream.buffer)
 
 for getter in [:headers, :cookies, :statuscode, :requestfor, :history]
