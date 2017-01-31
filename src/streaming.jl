@@ -18,12 +18,12 @@ function ResponseStream{T}(response, socket::T)
     r.response = response
     r.socket = socket
     r.state = NotStarted
-    r.buffer = IOBuffer()
+    r.buffer = IOBuffer(UInt8[], true, true, true, true, typemax(Int))
     r.parser = ResponseParser(r)
     r.timeout = Inf
     r.current_header = Nullable()
     r.state_change = Condition()
-    r.cookie_buffer = IOBuffer()
+    r.cookie_buffer = IOBuffer(UInt8[], true, true, true, true, typemax(Int))
     r
 end
 
