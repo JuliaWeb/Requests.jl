@@ -86,8 +86,28 @@ get_request_settings() = SETTINGS
 for kind in [:Response, :Request]
     @eval bytes(r::$kind) = r.data
     @eval text(r::$kind) = Compat.String(bytes(r))
-    @eval Base.bytestring(r::$kind) = text(r)
-    @eval Base.readall(r::$kind) = text(r)
+    if VERSION < v"0.5.0-dev+4194"
+        @eval Base.bytestring(r::$kind) = text(r)
+    else
+        @eval Base.String(r::$kind) = text(r)
+        if VERSION < v"0.6.0-dev.2521"
+            @eval function Base.bytestring(r::$kind)
+                Base.depwarn("bytestring(r::$kind) is deprecated, use String(r) instead.", :bytestring)
+                String(r)
+            end
+        end
+    end
+    if VERSION < v"0.5.0-dev+2151"
+        @eval Base.readall(r::$kind) = text(r)
+    else
+        @eval Base.readstring(r::$kind) = text(r)
+        if VERSION < v"0.6.0-dev.2521"
+            @eval function Base.readall(r::$kind)
+                Base.depwarn("readall(r::$kind) is deprecated, use readstring(r) instead.", :readall)
+                readstring(r)
+            end
+        end
+    end
     @eval Base.read(r::$kind) = bytes(r)
     @eval json(r::$kind; kwargs...) = JSON.parse(text(r); kwargs...)
 
