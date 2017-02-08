@@ -92,7 +92,7 @@ for kind in [:Response, :Request]
         @eval Base.String(r::$kind) = text(r)
         if VERSION < v"0.6.0-dev.2521"
             @eval function Base.bytestring(r::$kind)
-                Base.depwarn("bytestring(r::$kind) is deprecated, use String(r) instead.", :bytestring)
+                Base.depwarn("bytestring(r::$($kind)) is deprecated, use String(r) instead.", :bytestring)
                 String(r)
             end
         end
@@ -103,7 +103,7 @@ for kind in [:Response, :Request]
         @eval Base.readstring(r::$kind) = text(r)
         if VERSION < v"0.6.0-dev.2521"
             @eval function Base.readall(r::$kind)
-                Base.depwarn("readall(r::$kind) is deprecated, use readstring(r) instead.", :readall)
+                Base.depwarn("readall(r::$($kind)) is deprecated, use readstring(r) instead.", :readall)
                 readstring(r)
             end
         end
