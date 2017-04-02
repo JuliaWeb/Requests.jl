@@ -4,8 +4,9 @@ using JSON
 using Base.Test
 using Libz
 
-import Requests: get, post, put, delete, options, bytes, text, json, history
+using Requests: get, post, put, delete, options, bytes, text, json, history
 
+@testset "Requests" begin
 # simple calls, no headers, data or query params -------
 
 @test get("http://httpbin.org/get").status == 200
@@ -257,3 +258,5 @@ end
 # Basic auth
 @test get("https://user:pw@httpbin.org/basic-auth/user/pw").status == 200
 @test get("https://user:wrongpw@httpbin.org/basic-auth/user/pw").status == 401
+
+end
