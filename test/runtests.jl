@@ -1,12 +1,12 @@
-using Compat
 using Requests
-using JSON
 using Base.Test
-using Libz
+using JSON, Libz
+using Compat
 
 using Requests: get, post, put, delete, options, bytes, text, json, history
 
 @testset "Requests" begin
+
 # simple calls, no headers, data or query params -------
 
 @test get("http://httpbin.org/get").status == 200
