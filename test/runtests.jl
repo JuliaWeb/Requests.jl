@@ -203,6 +203,7 @@ let
 
     write_chunked(stream, "ab")
     write_chunked(stream, "cde")
+    write_chunked(stream, "")
 
     response = JSON.parse(readstring(stream))
     @test response["data"] == "abcde"
