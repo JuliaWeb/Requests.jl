@@ -12,6 +12,7 @@ sudo: false
 script:
     - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
     - julia -e 'Pkg.clone(pwd())'
+    - julia -e 'Pkg.checkout("MbedTLS")'
     - julia -e 'Pkg.test("Requests", coverage=true)'
 after_success:
     - julia -e 'cd(Pkg.dir("Requests")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
