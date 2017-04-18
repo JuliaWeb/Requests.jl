@@ -33,10 +33,12 @@ end
 
 function send_headers(response_stream::ResponseStream)
     request = requestfor(response_stream)
-    print(response_stream, request.method, " ", isempty(request.resource) ? "/" : request.resource,
+    buf = IOBuffer()
+    print(buf, request.method, " ", isempty(request.resource) ? "/" : request.resource,
           " HTTP/1.1", CRLF,
           map(h->string(h,": ",request.headers[h],CRLF), collect(keys(request.headers)))...,
           "", CRLF)
+    write(response_stream, take!(buf))
     response_stream
 end
 
