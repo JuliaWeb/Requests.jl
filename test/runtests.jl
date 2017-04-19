@@ -194,6 +194,7 @@ end
 # Test HTTPS
 @test statuscode(get("https://httpbin.org")) == 200
 
+#=
 # Test output streaming
 let
     stream = Requests.post_streaming(
@@ -207,6 +208,7 @@ let
     response = JSON.parse(readstring(stream))
     @test response["data"] == "abcde"
 end
+=#
 
 
 # Test input streaming
