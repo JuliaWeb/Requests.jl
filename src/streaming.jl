@@ -108,7 +108,7 @@ function Base.wait(stream::ResponseStream)
 end
 
 function Base.eof(stream::ResponseStream)
-    eof(stream.buffer) && (stream.state==BodyDone || eof(stream.socket))
+    (stream.state==BodyDone || eof(stream.socket)) && eof(stream.buffer)
 end
 
 for T in [BitArray, Vector{UInt8}, UInt8]

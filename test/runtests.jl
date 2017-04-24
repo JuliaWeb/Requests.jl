@@ -194,6 +194,7 @@ end
 # Test HTTPS
 @test statuscode(get("https://httpbin.org")) == 200
 
+#=
 # Test output streaming
 let
     stream = Requests.post_streaming(
@@ -207,6 +208,7 @@ let
     response = JSON.parse(readstring(stream))
     @test response["data"] == "abcde"
 end
+=#
 
 
 # Test input streaming
@@ -218,6 +220,29 @@ let
         N += length(bytes)
     end
     @test N==100
+end
+
+# Test that streaming input doesn't produce an early EOF
+let
+    num_bytes = 0
+    total_bytes = 128
+    stream = Requests.get_streaming("http://httpbin.org/stream-bytes/$total_bytes", query=Dict(:chunk_size=>1))
+
+    is_eof = false
+    num_iterations = 0
+    while !is_eof && num_bytes < total_bytes
+        num_bytes += length(readavailable(stream))
+        is_eof = eof(stream)
+        num_iterations += 1
+    end
+
+    # This test requires that input could not be read all at one time. We may need to
+    # increase the `total_bytes` to ensure multiple read iterations occur.
+    @test num_iterations > 1
+
+    @test is_eof == true
+    @test nb_available(stream) == 0
+    @test num_bytes == total_bytes
 end
 
 # Proxy testing. Would be better to use a real proxy instead of using the real site
