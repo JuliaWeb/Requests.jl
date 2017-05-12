@@ -10,7 +10,7 @@ type ResponseStream{T<:IO} <: IO
     current_header::Nullable{Compat.UTF8String}
     state_change::Condition
     cookie_buffer::IOBuffer
-    ResponseStream() = new()
+    (::Type{ResponseStream{T}}){T}() = new{T}()
 end
 
 function ResponseStream{T}(response, socket::T)

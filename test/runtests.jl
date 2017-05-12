@@ -1,10 +1,11 @@
-using Compat
 using Requests
-using JSON
 using Base.Test
-using Libz
+using JSON, Libz
+using Compat
 
-import Requests: get, post, put, delete, options, bytes, text, json, history
+using Requests: get, post, put, delete, options, bytes, text, json, history
+
+@testset "Requests" begin
 
 # simple calls, no headers, data or query params -------
 
@@ -282,3 +283,5 @@ end
 # Basic auth
 @test get("https://user:pw@httpbin.org/basic-auth/user/pw").status == 200
 @test get("https://user:wrongpw@httpbin.org/basic-auth/user/pw").status == 401
+
+end
