@@ -140,7 +140,7 @@ end
 
 function on_body(parser, at, len)
     response_stream = pd(parser)
-    append!(response_stream.buffer.data, unsafe_wrap(Array, convert(Ptr{UInt8}, at), (len,)))
+    write(response_stream.buffer, unsafe_wrap(Array, convert(Ptr{UInt8}, at), (len,)))
     response_stream.buffer.size = length(response_stream.buffer.data)
     response_stream.state = OnBody
     notify(response_stream.state_change)

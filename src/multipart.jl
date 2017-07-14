@@ -225,7 +225,7 @@ function prepare_multipart_request!(request, files)
         chunked = true
     end
 
-    datasizes = Array(Int,length(files))
+    datasizes = Array{Int}(length(files))
 
     # Try to determine final size of the request. If this fails,
     # we fall back to chunked transfer
