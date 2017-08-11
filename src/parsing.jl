@@ -68,7 +68,7 @@ function parse_cookies!(response, cookie_strings)
                 name, value = nameval
                 c.attrs[strip(name)] = strip(value)
             else
-                c.attrs[strip(nameval[1])] = Compat.String("")
+                c.attrs[strip(nameval[1])] = ""
             end
         end
         response.cookies[c.name] = c
@@ -121,7 +121,7 @@ function on_headers_complete(parser)
     response.headers["http_major"] = string(convert(Int, p.http_major))
     response.headers["http_minor"] = string(convert(Int, p.http_minor))
     response.headers["Keep-Alive"] = string(http_should_keep_alive(parser))
-    parse_cookies!(response, Compat.String(take!(response_stream.cookie_buffer)))
+    parse_cookies!(response, String(take!(response_stream.cookie_buffer)))
 
     response_stream.state = HeadersDone
     notify(response_stream.state_change)

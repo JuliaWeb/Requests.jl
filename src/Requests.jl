@@ -85,7 +85,7 @@ get_request_settings() = SETTINGS
 ## Convenience methods for extracting the payload of a response
 for kind in [:Response, :Request]
     @eval bytes(r::$kind) = r.data
-    @eval text(r::$kind) = Compat.String(bytes(r))
+    @eval text(r::$kind) = String(bytes(r))
     if VERSION < v"0.5.0-dev+4194"
         @eval Base.bytestring(r::$kind) = text(r)
     else
@@ -142,7 +142,7 @@ function mimetype(r::Response)
         ct = split(headers(r)["Content-Type"], ";")[1]
         return Nullable(ct)
     else
-        return Nullable{Compat.UTF8String}()
+        return Nullable{String}()
     end
 end
 
@@ -156,7 +156,7 @@ function contentdisposition(r::Response)
             end
         end
     end
-    return Nullable{Compat.UTF8String}()
+    return Nullable{String}()
 end
 
 """
