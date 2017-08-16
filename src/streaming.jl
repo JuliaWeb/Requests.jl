@@ -64,6 +64,7 @@ function process_response(stream)
         end
     end
     @schedule begin
+        try
         while stream.state < BodyDone && !eof(stream.socket)
             last_received = now()
             data = readavailable(stream.socket)
@@ -72,6 +73,9 @@ function process_response(stream)
             end
         end
         put!(status_channel, :success)
+        catch exc
+            put!(status_channel, :timeout)
+        end
     end
     status = take!(status_channel)
     status == :timeout && throw(TimeoutException(timeout))
