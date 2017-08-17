@@ -8,11 +8,7 @@ export set_proxy, set_https_proxy, get_request_settings
 
 import Base: get, write
 
-if VERSION < v"0.5.0-dev+1229"
-    import Base.FS: File
-else
-    import Base.Filesystem: File
-end
+import Base.Filesystem: File
 
 import URIParser: URI
 import HttpCommon: Cookie
@@ -86,26 +82,18 @@ get_request_settings() = SETTINGS
 for kind in [:Response, :Request]
     @eval bytes(r::$kind) = r.data
     @eval text(r::$kind) = Compat.String(bytes(r))
-    if VERSION < v"0.5.0-dev+4194"
-        @eval Base.bytestring(r::$kind) = text(r)
-    else
-        @eval Base.String(r::$kind) = text(r)
-        if VERSION < v"0.6.0-dev.2521"
-            @eval function Base.bytestring(r::$kind)
-                Base.depwarn("bytestring(r::$($kind)) is deprecated, use String(r) instead.", :bytestring)
-                String(r)
-            end
+    @eval Base.String(r::$kind) = text(r)
+    if VERSION < v"0.6.0-dev.2521"
+        @eval function Base.bytestring(r::$kind)
+            Base.depwarn("bytestring(r::$($kind)) is deprecated, use String(r) instead.", :bytestring)
+            String(r)
         end
     end
-    if VERSION < v"0.5.0-dev+2151"
-        @eval Base.readall(r::$kind) = text(r)
-    else
-        @eval Base.readstring(r::$kind) = text(r)
-        if VERSION < v"0.6.0-dev.2521"
-            @eval function Base.readall(r::$kind)
-                Base.depwarn("readall(r::$($kind)) is deprecated, use readstring(r) instead.", :readall)
-                readstring(r)
-            end
+    @eval Base.readstring(r::$kind) = text(r)
+    if VERSION < v"0.6.0-dev.2521"
+        @eval function Base.readall(r::$kind)
+            Base.depwarn("readall(r::$($kind)) is deprecated, use readstring(r) instead.", :readall)
+            readstring(r)
         end
     end
     @eval Base.read(r::$kind) = bytes(r)
@@ -142,7 +130,7 @@ function mimetype(r::Response)
         ct = split(headers(r)["Content-Type"], ";")[1]
         return Nullable(ct)
     else
-        return Nullable{Compat.UTF8String}()
+        return Nullable{String}()
     end
 end
 
@@ -156,7 +144,7 @@ function contentdisposition(r::Response)
             end
         end
     end
-    return Nullable{Compat.UTF8String}()
+    return Nullable{String}()
 end
 
 """

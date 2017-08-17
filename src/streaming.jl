@@ -7,7 +7,7 @@ type ResponseStream{T<:IO} <: IO
     buffer::IOBuffer
     parser::ResponseParser
     timeout::Float64
-    current_header::Nullable{Compat.UTF8String}
+    current_header::Nullable{String}
     state_change::Condition
     cookie_buffer::IOBuffer
     #Replace with `ResponseStream{T}() where T` when dropping support for 0.5
