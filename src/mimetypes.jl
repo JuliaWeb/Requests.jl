@@ -2,7 +2,7 @@
 
 using Compat
 
-const MIMETYPES = Dict{Compat.UTF8String, Compat.UTF8String}()
+const MIMETYPES = Dict{String, String}()
 
 MIMETYPES["application/andrew-inset"]="ez"
 MIMETYPES["application/applixware"]="aw"

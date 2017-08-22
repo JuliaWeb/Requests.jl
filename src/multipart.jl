@@ -30,9 +30,9 @@ write(io::ChunkedStream, arg) = write_chunked(io.io, arg)
 immutable FileParam
     file::Union{IO,Base.File,AbstractString,Vector{UInt8}}     # The file
     # The content type (default: "", which is interpreted as text/plain serverside)
-    ContentType::Compat.UTF8String
-    name::Compat.UTF8String                     # The fieldname (in a form)
-    filename::Compat.UTF8String                              # The filename (of the actual file)
+    ContentType::String
+    name::String                     # The fieldname (in a form)
+    filename::String                              # The filename (of the actual file)
     # Whether or not to close the file when the request is done
     close::Bool
 
@@ -116,11 +116,7 @@ end
 
 function write_file(stream,file::IOBuffer,datasize,doclose)
     @assert datasize != -1
-if VERSION < v"0.5.0-dev+4817"
-    write(stream,sub(file.data,(position(file)+1):(position(file)+nb_available(file))))
-else
-    write(stream,Base.view(file.data,(position(file)+1):(position(file)+nb_available(file))))
-end
+write(stream,Base.view(file.data,(position(file)+1):(position(file)+nb_available(file))))
     doclose && close(file)
 end
 
@@ -199,7 +195,7 @@ end
 
 immutable MultipartSettings
     datasizes::Vector{Int}
-    boundary::Compat.UTF8String
+    boundary::String
     chunked::Bool
 end
 
