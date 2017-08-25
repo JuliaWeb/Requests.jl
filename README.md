@@ -133,7 +133,7 @@ FileParam has the following constructors:
 Via accessors (preferred):
 ```julia
 readstring(::Response)      # Get the payload of the response as a string
-readbytes(::Response)       # Get the payload as a byte array
+read(::Response)            # Get the payload as a byte array
 Requests.json(::Response)   # Parse a JSON-encoded response into a Julia object
 statuscode(::Response)      # Get the HTTP status code
 headers(::Response)         # A dictionary from response header fields to values
