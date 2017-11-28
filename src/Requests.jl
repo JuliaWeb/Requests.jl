@@ -14,6 +14,7 @@ import URIParser: URI
 import HttpCommon: Cookie
 
 using Compat
+using Dates
 using HttpParser
 using HttpCommon
 using URIParser
