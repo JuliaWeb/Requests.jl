@@ -44,9 +44,9 @@ function on_header_field(parser, at, len)
     header_field = header[1:len]
     if response_stream.state == OnHeaderField
         field = string(get(response_stream.current_header, header_field))
-        response_stream.current_header = Nullable(field)
+        response_stream.current_header = field
     else
-        response_stream.current_header = Nullable(header_field)
+        response_stream.current_header = header_field
     end
     response_stream.state = OnHeaderField
     notify(response_stream.state_change)

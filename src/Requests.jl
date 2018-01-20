@@ -35,12 +35,12 @@ function __init__()
     init_proxy()
 end
 
-type GlobalSettings
-    http_proxy::Nullable{URI}
-    https_proxy::Nullable{URI}
+mutable struct GlobalSettings
+    http_proxy::Union{URI, Nothing}
+    https_proxy::Union{URI, Nothing}
     max_redirects::Int
 end
-GlobalSettings() = GlobalSettings(Nullable{URI}(), Nullable{URI}(), 5)
+GlobalSettings() = GlobalSettings(nothing, nothing, 5)
 
 function Base.show(io::IO, settings::GlobalSettings)
     println(io, "HTTP proxy: ", isnull(settings.http_proxy) ? "No proxy" : get(settings.http_proxy))
@@ -71,10 +71,10 @@ function init_proxy()
     end
 end
 
-set_proxy(proxy::URI) = set_proxy(Nullable(proxy))
-set_proxy(proxy::Nullable{URI}) = SETTINGS.http_proxy = proxy
+set_proxy(proxy::URI) = set_proxy(proxy)
+set_proxy(proxy::Union{URI, Nothing}) = SETTINGS.http_proxy = proxy
 set_proxy(proxy) = set_proxy(URI(proxy))
-set_https_proxy(proxy) = SETTINGS.https_proxy=Nullable(URI(proxy))
+set_https_proxy(proxy) = SETTINGS.https_proxy=URI(proxy)
 
 get_request_settings() = SETTINGS
 
@@ -128,9 +128,9 @@ end
 function mimetype(r::Response)
     if haskey(headers(r), "Content-Type")
         ct = split(headers(r)["Content-Type"], ";")[1]
-        return Nullable(ct)
+        return ct
     else
-        return Nullable{String}()
+        return nothing
     end
 end
 
@@ -140,11 +140,11 @@ function contentdisposition(r::Response)
         if length(cd) ≥ 2
             filepart = split(cd[2], "=", limit=2)
             if length(filepart) == 2
-                return  filepart[2] |> strip |> f->strip(f, '"') |> Nullable
+                return filepart[2] |> strip |> f->strip(f, '"')
             end
         end
     end
-    return Nullable{String}()
+    return nothing
 end
 
 """
@@ -262,7 +262,7 @@ cookie_request_header(cookies::AbstractVector{Cookie}) =
 const is_location = r"^location$"i
 
 function get_redirect_uri(response)
-    300 <= statuscode(response) < 400 || return Nullable{URI}()
+    300 <= statuscode(response) < 400 || return nothing
     hdrs = headers(response)
     for (key, val) in hdrs
         if is_location(key)
@@ -271,10 +271,10 @@ function get_redirect_uri(response)
                 request = requestfor(response)
                 uri = URI(request.uri.scheme, request.uri.host, request.uri.port, uri.path, uri.query)
             end
-            return Nullable(uri)
+            return uri
         end
     end
-    return Nullable{URI}()
+    return nothing
 end
 
 immutable RedirectException <: Exception

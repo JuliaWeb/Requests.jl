@@ -7,7 +7,7 @@ type ResponseStream{T<:IO} <: IO
     buffer::IOBuffer
     parser::ResponseParser
     timeout::Float64
-    current_header::Nullable{String}
+    current_header::Union{String, Nothing}
     state_change::Condition
     cookie_buffer::IOBuffer
     #Replace with `ResponseStream{T}() where T` when dropping support for 0.5
@@ -22,7 +22,7 @@ function ResponseStream{T}(response, socket::T)
     r.buffer = IOBuffer(UInt8[], true, true, true, true, typemax(Int))
     r.parser = ResponseParser(r)
     r.timeout = Inf
-    r.current_header = Nullable()
+    r.current_header = nothing
     r.state_change = Condition()
     r.cookie_buffer = IOBuffer(UInt8[], true, true, true, true, typemax(Int))
     r
@@ -163,7 +163,7 @@ function Base.show(io::IO, err::ProxyException)
 end
 
 function open_stream(req::Request, tls_conf=TLS_VERIFY, timeout=Inf,
-                     http_proxy=Nullable{URI}(), https_proxy=Nullable{URI}())
+                     http_proxy=Union{URI, Nothing}(), https_proxy=Union{URI, Nothing}())
     uri = req.uri
     connect_method = :direct
     if scheme(uri) == "http"
@@ -192,7 +192,7 @@ function open_stream(req::Request, tls_conf=TLS_VERIFY, timeout=Inf,
             tunnel_req = Request()
             tunnel_req.method = "CONNECT"
             tunnel_resp = Response()
-            tunnel_resp.request = Nullable(tunnel_req)
+            tunnel_resp.request = tunnel_req
             tunnel_resp_stream = ResponseStream(tunnel_resp, sock)
             tunnel_resp_stream.timeout = timeout
             write(sock, "CONNECT $(req.uri.host):$(https_port(req.uri)) HTTP/1.1\r\n\r\n")
@@ -211,7 +211,7 @@ function open_stream(req::Request, tls_conf=TLS_VERIFY, timeout=Inf,
     end
     resp = Response()
     empty!(resp.headers)
-    resp.request = Nullable(req)
+    resp.request = req
     stream = ResponseStream(resp, stream)
     stream.timeout = timeout
     send_headers(stream)
