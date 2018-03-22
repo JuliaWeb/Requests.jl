@@ -1,3 +1,7 @@
+# This package is DEPRECATED
+
+We recommend that you use [HTTP.jl](https://github.com/JuliaWeb/HTTP.jl) instead. This package is no longer maintained and has reduced functionality and performance compared to HTTP.jl. 
+
 # Requests.jl
 
 An HTTP client written in Julia. Uses `joyent/http-parser` via [HttpParser.jl](https://github.com/JuliaWeb/HttpParser.jl).
