@@ -220,6 +220,13 @@ let
         N += length(bytes)
     end
     @test N==100
+
+    stream = Requests.get_streaming("http://httpbin.org/stream-bytes/100", query=Dict(:chunk_size=>10))
+    close(stream)
+    @test eof(stream)
+    @test isempty(read(stream))
+    VERSION < v"0.5" && Base.wait_close(stream.socket)
+    @test !isopen(stream)
 end
 
 # Test that streaming input doesn't produce an early EOF
