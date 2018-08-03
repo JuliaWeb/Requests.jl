@@ -38,13 +38,15 @@ end
 type GlobalSettings
     http_proxy::Nullable{URI}
     https_proxy::Nullable{URI}
+    no_proxy::Vector{ASCIIString}
     max_redirects::Int
 end
-GlobalSettings() = GlobalSettings(Nullable{URI}(), Nullable{URI}(), 5)
+GlobalSettings() = GlobalSettings(Nullable{URI}(), Nullable{URI}(), Vector{ASCIIString}(), 5)
 
 function Base.show(io::IO, settings::GlobalSettings)
     println(io, "HTTP proxy: ", isnull(settings.http_proxy) ? "No proxy" : get(settings.http_proxy))
     println(io, "HTTPS proxy: ", isnull(settings.https_proxy) ? "No proxy" : get(settings.https_proxy))
+    println(io, "No proxy: ", settings.https_proxy)
     print(io, "Max redirects: ", settings.max_redirects)
 end
 
@@ -69,12 +71,22 @@ function init_proxy()
             warn("Problem parsing https_proxy environment variable $(ENV["https_proxy"]); ignoring\n $err")
         end
     end
+    if haskey(ENV, "no_proxy")
+        try
+            no_proxy = ENV["no_proxy"]
+            set_no_proxy(no_proxy)
+            info("Using NO proxy $no_proxy from no_proxy environment variable")
+        catch err
+            warn("Problem parsing no_proxy environment variable $(ENV["no_proxy"]); ignoring\n $err")
+        end
+    end
 end
 
 set_proxy(proxy::URI) = set_proxy(Nullable(proxy))
 set_proxy(proxy::Nullable{URI}) = SETTINGS.http_proxy = proxy
 set_proxy(proxy) = set_proxy(URI(proxy))
 set_https_proxy(proxy) = SETTINGS.https_proxy=Nullable(URI(proxy))
+set_no_proxy(no_proxy) = SETTINGS.no_proxy = collect( ASCIIString, split( no_proxy, "," ) )
 
 get_request_settings() = SETTINGS
 
@@ -326,7 +338,8 @@ function do_stream_request(uri::URI, verb; headers = Dict{AbstractString, Abstra
                             gzip_data = false,
                             compressed = false,
                             proxy = SETTINGS.http_proxy,
-                            https_proxy = SETTINGS.https_proxy
+                            https_proxy = SETTINGS.https_proxy,
+                            no_proxy = SETTINGS.no_proxy
                             )
 
     query_str = format_query_str(query; uri = uri)
@@ -366,7 +379,7 @@ function do_stream_request(uri::URI, verb; headers = Dict{AbstractString, Abstra
 
     request = default_request(newuri, headers, body, verb)
     if isempty(files)
-        response_stream = open_stream(request, tls_conf, timeout_sec, proxy, https_proxy)
+        response_stream = open_stream(request, tls_conf, timeout_sec, proxy, https_proxy, no_proxy)
         if write_body
             write(response_stream, request.data)
         end
@@ -377,7 +390,7 @@ function do_stream_request(uri::URI, verb; headers = Dict{AbstractString, Abstra
             error("Tried to send form data with invalid Content-Type. ")
         end
         multipart_settings = prepare_multipart_request!(request, files)
-        response_stream = open_stream(request, tls_conf, timeout_sec, proxy, https_proxy)
+        response_stream = open_stream(request, tls_conf, timeout_sec, proxy, https_proxy, no_proxy)
         send_multipart(response_stream, multipart_settings, files)
     end
     main_task = current_task()
