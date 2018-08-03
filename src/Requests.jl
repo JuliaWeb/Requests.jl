@@ -175,7 +175,7 @@ function save(r::Response, path=".")
                     end
                 end
             end
-            basefile = Dates.format(now(), "mm-dd-yyyy-H-M")
+            basefile = Compat.Dates.format(now(), "mm-dd-yyyy-H-M")
             filename = joinpath(path, "$basefile.$ext")
         end
     end
@@ -248,7 +248,7 @@ end
 
 
 timeout_in_sec(::Void) = Inf
-timeout_in_sec(t::Dates.TimePeriod) = Dates.toms(t)/1000.
+timeout_in_sec(t::Compat.Dates.TimePeriod) = Compat.Dates.toms(t)/1000.
 timeout_in_sec(t) = convert(Float64, t)
 
 cookie_value(c::Cookie) = c.value
